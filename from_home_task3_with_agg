@@ -1,0 +1,67 @@
+from fastapi import FastAPI, HTTPException
+import pandas as pd
+# import uvicorn
+
+app = FastAPI()
+
+
+def get_item(csv_file, value, aggregation=None):
+    dataframe = pd.read_csv(csv_file, sep=';')
+    if aggregation:
+        grouped_by_value_a_obj = dataframe.groupby('value_a', as_index=False).result
+        if aggregation == 'mean':
+            dataframe = grouped_by_value_a_obj.mean()
+        elif aggregation == 'max':
+            dataframe = grouped_by_value_a_obj.max()
+        elif aggregation == 'min':
+            dataframe = grouped_by_value_a_obj.min()
+        else:
+            return {'result of function': 'Ну я хз чё ты хочешь('}
+        # нужен ли функционал, который позволит выбрать result, если у нас несколько одинаковых value_a?
+
+    try:
+        # достаю индекс интересующей нас строки
+        index_of_value_a = dataframe[dataframe['value_a'] == value].index.values
+        result = int(dataframe.loc[index_of_value_a[0], 'result'])
+        return {'result of function': result}
+    except IndexError:
+        raise HTTPException(status_code=500, detail="Item not found")
+
+
+@app.get("/")
+def home():
+    return {"message": "Hello World"}
+
+
+@app.get('/without_agr/{value_a}')
+def get_item_without_agr(value_a: int):
+    return get_item('test_data_simple.csv', value_a)
+
+
+# выводит целые значения, причём обрубая дробную часть, надо пофиксить
+@app.get('/with_agr/mean/{value_a}')
+def get_item_with_agr_mean(value_a: int):
+    return get_item('test_data_hard.csv', value_a, 'mean')
+
+
+@app.get('/with_agr/max/{value_a}')
+def get_item_with_agr_max(value_a: int):
+    return get_item('test_data_hard.csv', value_a, 'max')
+
+
+@app.get('/with_agr/min/{value_a}')
+def get_item_with_agr_max(value_a: int):
+    return get_item('test_data_hard.csv', value_a, 'min')
+
+
+# а как бы мне это гавнище дебажить то?)0)0))
+
+# нашёл такой способ (логично, кек), но у меня почему-то app высвечивается ошибкой
+# if __name__ == '__main__':
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# код из 1 задачи
+# @app.get('/{value_a}')
+# def get_item(value_a: int):
+#   result = value_a * variables.X + variables.B
+#   return {'result of function': result}
